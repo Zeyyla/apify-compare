@@ -1,0 +1,33 @@
+{
+    "actorSpecification": 1,
+    "fields": {},
+    "views": {
+        "overview": {
+            "title": "Store Search Results",
+            "transformation": {
+                "fields": ["title", "name", "username", "description"]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "title": {
+                        "label": "Title",
+                        "format": "text"
+                    },
+                    "name": {
+                        "label": "Actor Name",
+                        "format": "text"
+                    },
+                    "username": {
+                        "label": "Author",
+                        "format": "text"
+                    },
+                    "description": {
+                        "label": "Description",
+                        "format": "text"
+                    }
+                }
+            }
+        }
+    }
+}

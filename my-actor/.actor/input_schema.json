@@ -1,0 +1,14 @@
+{
+    "title": "Actor Comparison Tool",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "query": {
+            "title": "Search Query",
+            "type": "string",
+            "description": "Search term to find actors in Apify Store (e.g., 'eventbrite', 'twitter scraper')",
+            "editor": "textfield"
+        }
+    },
+    "required": ["query"]
+}
