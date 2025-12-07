@@ -8,6 +8,14 @@
             "type": "string",
             "description": "Search term to find actors in Apify Store (e.g., 'eventbrite', 'twitter scraper')",
             "editor": "textfield"
+        },
+        "maxActors": {
+            "title": "Max Actors",
+            "type": "integer",
+            "description": "Maximum number of actors to compare (runs in parallel)",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 10
         }
     },
     "required": ["query"]

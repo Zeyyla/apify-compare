@@ -7,6 +7,7 @@ const MAX_ATTEMPTS = 5;
 
 interface Input {
     query: string;
+    maxActors?: number;
 }
 
 interface AttemptRecord {
@@ -79,7 +80,8 @@ if (!apifyToken) {
     throw new Error('Missing APIFY_TOKEN');
 }
 
-console.log(`Searching Apify Store for: "${input.query}"`);
+const maxActors = input.maxActors ?? 3;
+console.log(`Searching Apify Store for: "${input.query}" (max ${maxActors} actors)`);
 
 const client = new ApifyClient({
     token: apifyToken,
@@ -104,16 +106,14 @@ const allResults = await client.store().list({
 // Filter out FLAT_PRICE_PER_MONTH actors
 const actors = allResults.items
     .filter((a: any) => a.currentPricingInfo?.pricingModel !== 'FLAT_PRICE_PER_MONTH')
-    .slice(0, 3);
+    .slice(0, maxActors);
 
 console.log(`Found ${allResults.items.length} actors, ${actors.length} after filtering\n`);
 
-// Step 2: For each actor, run iterative agent loop
-const comparisonResults: ComparisonResult[] = [];
-
-for (const storeActor of actors) {
+// Process a single actor
+async function processActor(storeActor: any): Promise<ComparisonResult> {
     const actorId = `${storeActor.username}/${storeActor.name}`;
-    console.log(`Processing: ${actorId}`);
+    console.log(`[${actorId}] Starting...`);
 
     const result: ComparisonResult = {
         actorId,
@@ -133,10 +133,9 @@ for (const storeActor of actors) {
         const inputSchema = build?.actorDefinition?.input;
 
         if (!inputSchema) {
-            console.log(`  Skipping: no input schema found`);
+            console.log(`[${actorId}] Skipping: no input schema`);
             result.attemptHistory.push({ attempt: 0, input: {}, error: 'No input schema found' });
-            comparisonResults.push(result);
-            continue;
+            return result;
         }
 
         result.inputSchema = inputSchema;
@@ -148,7 +147,7 @@ for (const storeActor of actors) {
         while (attempt < MAX_ATTEMPTS && !result.success) {
             attempt++;
             result.attempts = attempt;
-            console.log(`  Attempt ${attempt}/${MAX_ATTEMPTS}...`);
+            console.log(`[${actorId}] Attempt ${attempt}/${MAX_ATTEMPTS}...`);
 
             // Generate input
             const prompt = buildPrompt(storeActor, inputSchema, input.query, lastError, attempt);
@@ -165,7 +164,7 @@ for (const storeActor of actors) {
             } catch (e) {
                 lastError = `Failed to parse LLM response as JSON: ${text.substring(0, 200)}`;
                 result.attemptHistory.push({ attempt, input: {}, error: lastError });
-                console.log(`    Parse error, retrying...`);
+                console.log(`[${actorId}] Parse error, retrying...`);
                 continue;
             }
 
@@ -191,31 +190,35 @@ for (const storeActor of actors) {
                     }
 
                     result.attemptHistory.push({ attempt, input: generatedInput });
-                    console.log(`    ✓ Success! (${result.runDurationSecs?.toFixed(1)}s)`);
+                    console.log(`[${actorId}] ✓ Success! (${result.runDurationSecs?.toFixed(1)}s)`);
                 } else {
                     lastError = `Run completed with status: ${run.status}`;
                     result.attemptHistory.push({ attempt, input: generatedInput, error: lastError });
-                    console.log(`    Run status: ${run.status}, retrying...`);
+                    console.log(`[${actorId}] Status: ${run.status}, retrying...`);
                 }
             } catch (error) {
                 lastError = error instanceof Error ? error.message : String(error);
                 result.attemptHistory.push({ attempt, input: generatedInput, error: lastError });
-                console.log(`    Error: ${lastError.substring(0, 80)}...`);
+                console.log(`[${actorId}] Error: ${lastError.substring(0, 60)}...`);
             }
         }
 
         if (!result.success) {
-            console.log(`  ✗ Failed after ${attempt} attempts`);
+            console.log(`[${actorId}] ✗ Failed after ${attempt} attempts`);
         }
 
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        console.log(`  Fatal error: ${errorMsg}`);
+        console.log(`[${actorId}] Fatal error: ${errorMsg}`);
         result.attemptHistory.push({ attempt: 0, input: {}, error: errorMsg });
     }
 
-    comparisonResults.push(result);
+    return result;
 }
+
+// Step 2: Run all actors in parallel
+console.log(`Running ${actors.length} actors in parallel...\n`);
+const comparisonResults = await Promise.all(actors.map(processActor));
 
 const successCount = comparisonResults.filter(r => r.success).length;
 console.log(`\nCompleted: ${successCount}/${comparisonResults.length} succeeded`);
