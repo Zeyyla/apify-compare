@@ -1,16 +1,16 @@
 # Apify Actor Comparison Tool
 
-Compare and test multiple Apify Actors automatically using AI-powered input generation. This Actor searches the Apify Store for relevant actors based on your query, intelligently generates valid input JSON for each actor using an LLM, and runs them to compare their performance and results.
+Discover, evaluate, and test Apify Actors automatically. This tool combines intelligent actor scouting (LLM-powered evaluation) with automated execution to find and validate the best actors for your use case.
 
-## What does Apify Actor Comparison Tool do?
+## What does it do?
 
-This Actor helps you discover and compare different Apify Actors that can solve your specific use case. Instead of manually testing multiple actors, this tool:
+This Actor helps you find and test Apify Actors for your specific needs:
 
-- **Searches the Apify Store** - Finds up to 3 relevant actors based on your search query
-- **Generates valid input** - Uses AI to automatically create valid input JSON for each actor based on their input schema
-- **Runs and compares** - Executes each actor and collects performance metrics
-- **Handles errors intelligently** - Retries with improved input when runs fail (up to 5 attempts per actor)
-- **Provides detailed results** - Returns comprehensive comparison data including success rates, run durations, and sample outputs
+- **Smart search** - Extracts keywords from your query and searches the Apify Store
+- **Evaluates candidates** - Crawls actor pages and scores them on 7 criteria using LLM (intent match, documentation, pricing, reliability, maintenance, community trust, input complexity)
+- **Ranks by score** - Selects the top N actors based on weighted evaluation scores
+- **Runs top actors** - Generates valid input and executes each actor with retry logic
+- **Combined results** - Returns evaluation scores alongside actual run results and output samples
 
 This is particularly useful when you need to:
 - Find the best actor for a specific scraping or automation task
@@ -47,7 +47,8 @@ The input of this Actor should be JSON containing your search query.
 
 ```json
 {
-    "query": "string (required) - Search query to find relevant Apify Actors"
+    "query": "string (required) - Search query to find relevant Apify Actors",
+    "maxActors": "number (optional, default: 3) - Maximum actors to evaluate and run"
 }
 ```
 
@@ -55,7 +56,8 @@ The input of this Actor should be JSON containing your search query.
 
 ```json
 {
-    "query": "Instagram posts scraper"
+    "query": "scrape eventbrite events",
+    "maxActors": 2
 }
 ```
 
@@ -114,7 +116,20 @@ Each comparison result contains the following information:
     "output": [
         // Sample output items from the actor (up to 5 items)
     ],
-    "success": true
+    "success": true,
+    "scores": {
+        "intentMatch": 8,
+        "documentation": 7,
+        "pricing": 6,
+        "reliability": 8,
+        "maintenance": 7,
+        "communityTrust": 6,
+        "inputComplexity": 9
+    },
+    "overallScore": 7.4,
+    "strengths": ["Well documented", "Active maintenance"],
+    "weaknesses": ["Limited output format options"],
+    "recommendation": "Good fit for basic event scraping needs."
 }
 ```
 
@@ -133,26 +148,30 @@ Each comparison result contains the following information:
 - **runDurationSecs** - How long the successful run took in seconds
 - **output** - Sample output items from the actor's dataset (limited to 5 items)
 - **success** - Whether the actor ran successfully
+- **scores** - LLM evaluation scores (1-10) across 7 criteria
+- **overallScore** - Weighted overall score (0-10)
+- **strengths** - Key advantages identified by the evaluator
+- **weaknesses** - Potential issues or limitations
+- **recommendation** - Brief recommendation from the evaluator
 
 ## How it works
 
-1. **Store Search**: Searches the Apify Store using your query, filters out subscription-based actors, and selects the top 3 most relevant actors
+1. **Query Analysis**: Uses LLM to extract optimal search keywords from your query
 
-2. **Input Generation**: For each actor:
-   - Retrieves the actor's input schema
-   - Uses an LLM (Google Gemma 3 27B via OpenRouter) to generate valid input JSON
-   - Incorporates your query to create realistic, relevant input values
+2. **Store Search**: Searches the Apify Store and filters out subscription-based actors
 
-3. **Iterative Execution**: 
-   - Attempts to run the actor with generated input
-   - If it fails, extracts the error message
-   - Generates improved input based on the error
-   - Retries up to 5 times
+3. **Detail Fetching**: Crawls actor pages to extract README content and pricing info
 
-4. **Result Collection**: 
-   - Captures run status, duration, and sample outputs
-   - Records all attempts for debugging
-   - Returns comprehensive comparison data
+4. **Evaluation**: Scores each actor on 7 criteria using LLM:
+   - Intent match (30%), Reliability (20%), Documentation (15%), Pricing (15%), Maintenance (10%), Community trust (5%), Input complexity (5%)
+
+5. **Selection**: Ranks actors by weighted score and selects top N
+
+6. **Execution**: For each top actor:
+   - Retrieves input schema and generates valid input via LLM
+   - Runs the actor with retry logic (up to 5 attempts, skips on timeout)
+
+7. **Result Collection**: Returns evaluation scores + run results + output samples
 
 ## Limitations
 
