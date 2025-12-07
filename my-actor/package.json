@@ -10,7 +10,9 @@
 		"@ai-sdk/openai": "^2.0.77",
 		"ai": "^5.0.108",
 		"apify": "^3.4.2",
-		"crawlee": "^3.13.8"
+		"apify-client": "^2.12.1",
+		"crawlee": "^3.13.8",
+		"openai": "^4.77.0"
 	},
 	"devDependencies": {
 		"@apify/eslint-config": "^1.0.0",
